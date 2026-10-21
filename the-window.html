@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>The Window</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall-a:#efe3ca;
+    --wall-b:#e6d7ba;
+    --floor-a:#a97a4f;
+    --floor-b:#946a44;
+    --frame:#f6f1e6;
+    --frame-edge:#d9cba9;
+    --wood:#8b5a3c;
+    --wood-dark:#6e4529;
+    --leaf:#6f8f5b;
+    --leaf-dark:#587349;
+    --accent:#c97b4a;
+    --sky-top:#a9cee1;
+    --sky-bottom:#eaf4ee;
+    --sun:#ffe6a8;
+    --ink:#4a3f33;
+    --ink-soft:#8a7b64;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(120% 120% at 50% 0%, #f9f5ec 0%, #efe7d6 100%);
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    overflow:hidden;
+  }
+
+  .stage{ padding:5vh 5vw; width:100%; display:flex; align-items:center; justify-content:center; }
+
+  .scene{
+    position:relative;
+    width:min(880px, 92vw);
+    aspect-ratio: 4 / 3;
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow: 0 40px 80px -35px rgba(60,42,20,0.4), 0 4px 18px rgba(60,42,20,0.12);
+    user-select:none;
+  }
+
+  /* ---------- ROOM ---------- */
+
+  .wall{
+    position:absolute; top:0; left:0; right:0; height:66%;
+    background:linear-gradient(180deg, var(--wall-a) 0%, var(--wall-b) 100%);
+  }
+  .baseboard{
+    position:absolute; left:0; right:0; top:66%; height:1%;
+    background:linear-gradient(180deg,#d9c9a2,#c9b78d);
+  }
+  .floor{
+    position:absolute; left:0; right:0; bottom:0; height:33%;
+    background:
+      repeating-linear-gradient(90deg, var(--floor-a) 0 8.5%, var(--floor-b) 8.5% 9%);
+    box-shadow: inset 0 14px 22px -14px rgba(30,18,6,0.35);
+  }
+
+  .frame-pic{
+    position:absolute; right:7%; top:9%; width:8.5%; height:11%;
+    background:#efe6d2; border:3px solid #cdbb8e;
+    box-shadow:0 6px 14px rgba(40,28,12,0.18);
+  }
+  .frame-pic::after{
+    content:''; position:absolute; inset:14%;
+    background:linear-gradient(135deg,#cfe0c8,#e9d9b6);
+  }
+
+  .rug{
+    position:absolute; left:6%; bottom:1%; width:34%; height:9%;
+    background:radial-gradient(ellipse at center, var(--accent) 0%, transparent 72%);
+    opacity:.35; border-radius:50%;
+  }
+
+  .plant-pot{
+    position:absolute; left:3.5%; bottom:2%; width:10%; height:14%;
+    background:linear-gradient(180deg,#c9784a,#a55f36);
+    border-radius:3px 3px 14px 14px;
+    box-shadow:0 8px 14px -8px rgba(0,0,0,0.35);
+  }
+  .leaf{
+    position:absolute; background:linear-gradient(145deg,var(--leaf),var(--leaf-dark));
+    border-radius:50% 50% 50% 4%;
+  }
+  .leaf.l1{ left:4.2%; bottom:12.5%; width:8%; height:15%; transform:rotate(-18deg); }
+  .leaf.l2{ left:8.5%; bottom:14%; width:7%; height:17%; transform:rotate(10deg); }
+  .leaf.l3{ left:2%; bottom:15%; width:6%; height:12%; transform:rotate(-46deg); }
+
+  .chair{
+    position:absolute; left:16%; bottom:2%; width:11.5%; height:17%;
+  }
+  .chair .back{
+    position:absolute; left:14%; bottom:38%; width:72%; height:62%;
+    background:linear-gradient(160deg,var(--accent),#b5623a);
+    border-radius:8px 8px 3px 3px;
+  }
+  .chair .seat{
+    position:absolute; left:0; bottom:26%; width:100%; height:20%;
+    background:linear-gradient(160deg,#d98a58,var(--accent));
+    border-radius:4px;
+  }
+  .chair .leg{ position:absolute; bottom:0; width:6%; height:28%; background:var(--wood-dark); }
+  .chair .leg.a{ left:6%; } .chair .leg.b{ left:82%; }
+
+  .side-table{
+    position:absolute; right:5%; bottom:2%; width:15%; height:10%;
+    background:linear-gradient(160deg,var(--wood),var(--wood-dark));
+    border-radius:2px;
+    box-shadow:0 8px 14px -8px rgba(0,0,0,0.3);
+  }
+  .side-table .leg{ position:absolute; bottom:-9%; width:7%; height:9%; background:var(--wood-dark); }
+  .side-table .leg.a{ left:8%; } .side-table .leg.b{ right:8%; }
+
+  .lamp{ position:absolute; right:8.5%; bottom:12%; width:6%; height:19%; }
+  .lamp .base{ position:absolute; bottom:0; left:38%; width:24%; height:16%; background:var(--wood-dark); border-radius:2px; }
+  .lamp .stem{ position:absolute; bottom:14%; left:47%; width:6%; height:56%; background:var(--wood-dark); }
+  .lamp .shade{
+    position:absolute; top:0; left:0; width:100%; height:44%;
+    background:linear-gradient(180deg,#f0d9a8,#e0bd7c);
+    clip-path:polygon(30% 0, 70% 0, 100% 100%, 0% 100%);
+  }
+  .lamp-glow{
+    position:absolute; top:6%; left:50%; width:220%; height:60%;
+    transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(255,224,160,0.55), rgba(255,224,160,0) 70%);
+    pointer-events:none;
+  }
+
+  .books{ position:absolute; right:22%; bottom:12.4%; width:9%; height:7%; }
+  .books .b{ position:absolute; bottom:0; height:32%; border-radius:1px; }
+  .books .b1{ left:0; width:100%; height:26%; background:#8f6a4d; }
+  .books .b2{ left:2%; bottom:26%; width:92%; height:24%; background:#a7754a; }
+  .books .b3{ left:1%; bottom:48%; width:96%; height:22%; background:#6f8f5b; }
+
+  .vase{ position:absolute; right:9.5%; bottom:12.6%; width:3.2%; height:6%;
+    background:linear-gradient(160deg,#cfe0c8,#a9c69c); border-radius:0 0 40% 40%/0 0 60% 60%; }
+  .vase::before{ content:''; position:absolute; top:-46%; left:20%; width:2px; height:52%; background:#7a9268; }
+
+  /* ---------- WINDOW ---------- */
+
+  .window-wrap{
+    position:absolute; left:26.5%; top:7.5%; width:47%; height:55%;
+  }
+
+  .window-frame{
+    position:absolute; inset:0;
+    background:linear-gradient(160deg,var(--frame),#ece3cd);
+    border-radius:6px;
+    padding:3.2%;
+    box-shadow:
+      0 22px 34px -20px rgba(50,34,14,0.45),
+      inset 0 0 0 1px rgba(60,42,20,0.06);
+    cursor:grab;
+    touch-action:none;
+  }
+  .window-frame.grabbing{ cursor:grabbing; }
+
+  .window-inner{
+    position:absolute; inset:3.2%;
+    border-radius:2px;
+    overflow:hidden;
+    background:#dff0ee;
+  }
+
+  .sky{ position:absolute; inset:0; background:linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 88%); }
+  .sun{
+    position:absolute; top:12%; right:16%; width:16%; aspect-ratio:1; border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #fffaf0, var(--sun) 62%, rgba(255,230,168,0) 75%);
+    box-shadow:0 0 40px 14px rgba(255,224,150,0.45);
+  }
+  .cloud{ position:absolute; width:20%; height:8%; background:#fff; border-radius:40px; opacity:.9; }
+  .cloud::before{ content:''; position:absolute; top:-46%; left:16%; width:56%; height:150%; background:#fff; border-radius:50%; }
+  .cloud::after{ content:''; position:absolute; top:-30%; right:6%; width:44%; height:120%; background:#fff; border-radius:50%; }
+  .cloud.c1{ top:16%; left:8%; }
+  .cloud.c2{ top:32%; left:52%; width:15%; height:6%; opacity:.75; }
+
+  .hills{
+    position:absolute; left:-10%; right:-10%; bottom:16%; height:20%;
+    background:linear-gradient(180deg,#cfe3c9,#b8d5ac);
+    border-radius:50%;
+  }
+  .buildings{ position:absolute; left:6%; bottom:16%; width:38%; height:24%; }
+  .buildings .b{ position:absolute; bottom:0; background:linear-gradient(180deg,#a9c1cf,#8fa9ba); }
+  .buildings .b1{ left:0; width:26%; height:62%; }
+  .buildings .b2{ left:28%; width:20%; height:100%; }
+  .buildings .b3{ left:52%; width:24%; height:44%; }
+
+  .trees{ position:absolute; right:4%; bottom:16%; width:34%; height:26%; }
+  .trees .t{ position:absolute; bottom:0; }
+  .trees .trunk{ width:8%; height:40%; background:#8b6b4a; left:20%; }
+  .trees .canopy{
+    width:60%; height:70%; left:0; bottom:22%;
+    background:radial-gradient(circle at 40% 35%, #7fa06a, #5f7f4d 75%);
+    border-radius:50%;
+  }
+  .trees .t2{ left:46%; transform:scale(.8); }
+
+  .panel{
+    position:absolute; top:0; bottom:0; width:50%;
+    background:linear-gradient(150deg,#f5f0e2,#e8dfc9);
+    box-shadow:0 12px 20px -12px rgba(20,14,4,0.4);
+    will-change: transform;
+  }
+  .panel-left{ left:0; box-shadow:6px 0 16px -10px rgba(20,14,4,0.35), 0 12px 20px -12px rgba(20,14,4,0.4); }
+  .panel-right{ right:0; box-shadow:-6px 0 16px -10px rgba(20,14,4,0.35), 0 12px 20px -12px rgba(20,14,4,0.4); }
+
+  .grid{ position:absolute; inset:9%; border:1px solid rgba(74,55,30,0.22); }
+  .grid::before{ content:''; position:absolute; left:50%; top:0; bottom:0; width:1px; background:rgba(74,55,30,0.22); }
+  .grid::after{ content:''; position:absolute; top:50%; left:0; right:0; height:1px; background:rgba(74,55,30,0.22); }
+
+  .handle{
+    position:absolute; top:50%; width:9%; height:16%;
+    background:linear-gradient(180deg,#cda76c,#a97e46);
+    border-radius:5px; transform:translateY(-50%);
+    box-shadow:0 3px 6px rgba(0,0,0,0.3);
+  }
+  .panel-right .handle{ left:-4.5%; }
+
+  .sun-beam{
+    position:absolute; left:30%; top:60%; width:42%; height:44%;
+    background:linear-gradient(200deg, rgba(255,232,178,0.5), rgba(255,232,178,0) 70%);
+    opacity:0; pointer-events:none;
+  }
+  .floor-light{
+    position:absolute; left:29%; bottom:3%; width:44%; height:15%;
+    background:radial-gradient(ellipse at center, rgba(255,222,158,0.55), rgba(255,222,158,0) 72%);
+    opacity:0; pointer-events:none;
+  }
+
+  /* ---------- TEXT ---------- */
+
+  .hint{
+    position:absolute; left:50%; top:65.5%; width:70%;
+    transform:translateX(-50%); text-align:center;
+    opacity:1; transition:opacity .9s ease; pointer-events:none;
+  }
+  .hint.hidden{ opacity:0; }
+  .hint-title{
+    font-size:clamp(11px,1.6vw,13px); font-weight:600; color:var(--ink);
+    text-transform:uppercase; letter-spacing:.18em; margin:0 0 5px;
+  }
+  .hint-sub{
+    font-size:clamp(10px,1.3vw,12px); color:var(--ink-soft); letter-spacing:.01em; margin:0;
+  }
+
+  .status{
+    position:absolute; left:50%; bottom:5%;
+    transform:translateX(-50%) translateY(6px);
+    font-size:clamp(10px,1.2vw,11px); font-weight:600; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:.24em;
+    opacity:0; transition:opacity .6s ease, transform .6s ease; pointer-events:none;
+  }
+  .status.visible{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (max-width: 520px){
+    .scene{ aspect-ratio: 3 / 4; }
+    .window-wrap{ left:14%; width:72%; top:9%; height:44%; }
+    .plant-pot, .leaf{ transform-origin:bottom left; }
+    .side-table, .lamp, .books, .vase{ transform:scale(.9); transform-origin:bottom right; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="scene" id="scene">
+
+    <div class="wall"></div>
+    <div class="baseboard"></div>
+    <div class="floor"></div>
+
+    <div class="rug"></div>
+    <div class="frame-pic"></div>
+
+    <div class="plant-pot"></div>
+    <div class="leaf l1"></div>
+    <div class="leaf l2"></div>
+    <div class="leaf l3"></div>
+
+    <div class="chair">
+      <div class="back"></div>
+      <div class="seat"></div>
+      <div class="leg a"></div>
+      <div class="leg b"></div>
+    </div>
+
+    <div class="side-table">
+      <div class="leg a"></div>
+      <div class="leg b"></div>
+    </div>
+    <div class="books">
+      <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div>
+    </div>
+    <div class="vase"></div>
+    <div class="lamp">
+      <div class="lamp-glow" id="lampGlow"></div>
+      <div class="shade"></div>
+      <div class="stem"></div>
+      <div class="base"></div>
+    </div>
+
+    <div class="window-wrap">
+      <div class="sun-beam" id="sunBeam"></div>
+      <div class="floor-light" id="floorLight"></div>
+
+      <div class="window-frame" id="frame">
+        <div class="window-inner">
+          <div class="sky">
+            <div class="sun"></div>
+            <div class="cloud c1"></div>
+            <div class="cloud c2"></div>
+            <div class="hills"></div>
+            <div class="buildings">
+              <div class="b b1"></div><div class="b b2"></div><div class="b b3"></div>
+            </div>
+            <div class="trees">
+              <div class="t t1"><div class="trunk"></div><div class="canopy"></div></div>
+              <div class="t t2"><div class="trunk"></div><div class="canopy"></div></div>
+            </div>
+          </div>
+          <div class="panel panel-left" id="panelLeft"><div class="grid"></div></div>
+          <div class="panel panel-right" id="panelRight"><div class="grid"></div><div class="handle"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint" id="hintOpen">
+      <p class="hint-title">Drag to open</p>
+      <p class="hint-sub">Drag the window to see outside.</p>
+    </div>
+
+    <div class="hint hidden" id="hintClose">
+      <p class="hint-title">Drag to close</p>
+    </div>
+
+    <div class="status" id="status"></div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  const scene      = document.getElementById('scene');
+  const frame      = document.getElementById('frame');
+  const panelLeft  = document.getElementById('panelLeft');
+  const panelRight = document.getElementById('panelRight');
+  const floorLight = document.getElementById('floorLight');
+  const sunBeam    = document.getElementById('sunBeam');
+  const lampGlow   = document.getElementById('lampGlow');
+  const hintOpenEl = document.getElementById('hintOpen');
+  const hintCloseEl= document.getElementById('hintClose');
+  const statusEl   = document.getElementById('status');
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let maxSlide = 0;        // px a panel can travel to fully clear the window
+  let progress = 0;        // 0 = closed, 1 = open (can transiently overshoot slightly)
+  let dragging = false;
+  let startX = 0;
+  let startProgress = 0;
+  let rafId = null;
+  let hintOpenTimer = null;
+  let hintOpenFaded = false;
+  let closeHintShown = false;
+  let statusTimer = null;
+
+  function computeMaxSlide(){
+    maxSlide = panelRight.getBoundingClientRect().width;
+    render(progress);
+  }
+
+  function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+
+  function render(p){
+    const clamped = clamp01(p);
+    // gentle rubber-band resistance just past the ends
+    const rubber = p < 0 ? p * 0.3 : (p > 1 ? 1 + (p - 1) * 0.3 : p);
+    const dist = maxSlide * rubber;
+
+    panelLeft.style.transform  = 'translateX(' + (-dist) + 'px)';
+    panelRight.style.transform = 'translateX(' + dist + 'px)';
+
+    floorLight.style.opacity = (clamped * 0.85).toFixed(3);
+    sunBeam.style.opacity    = (clamped * 0.75).toFixed(3);
+    scene.style.filter       = 'brightness(' + (1 + clamped * 0.07).toFixed(3) + ')';
+    lampGlow.style.opacity   = (0.55 - clamped * 0.32).toFixed(3);
+  }
+
+  function easeOutBack(t){
+    const c1 = 1.70158, c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  }
+
+  function animateTo(target){
+    cancelAnimationFrame(rafId);
+    const start = progress;
+    const t0 = performance.now();
+    const duration = reduceMotion ? 260 : 520;
+
+    function step(now){
+      const t = Math.min(1, (now - t0) / duration);
+      const eased = reduceMotion ? t : easeOutBack(t);
+      progress = start + (target - start) * eased;
+      render(progress);
+      if (t < 1){
+        rafId = requestAnimationFrame(step);
+      } else {
+        progress = target;
+        render(progress);
+        onSettled(target);
+      }
+    }
+    rafId = requestAnimationFrame(step);
+  }
+
+  function onSettled(target){
+    if (target === 1){
+      showStatus('Open');
+      if (!closeHintShown){
+        closeHintShown = true;
+        hintCloseEl.classList.remove('hidden');
+        setTimeout(function(){ hintCloseEl.classList.add('hidden'); }, 3000);
+      }
+    } else {
+      showStatus('Closed');
+    }
+  }
+
+  function showStatus(text){
+    statusEl.textContent = text;
+    statusEl.classList.add('visible');
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(function(){ statusEl.classList.remove('visible'); }, 1600);
+  }
+
+  function fadeHintOpen(){
+    if (hintOpenFaded) return;
+    hintOpenFaded = true;
+    clearTimeout(hintOpenTimer);
+    hintOpenEl.classList.add('hidden');
+  }
+
+  function onDown(e){
+    dragging = true;
+    startX = e.clientX;
+    startProgress = progress;
+    frame.setPointerCapture(e.pointerId);
+    frame.classList.add('grabbing');
+    cancelAnimationFrame(rafId);
+    fadeHintOpen();
+  }
+
+  function onMove(e){
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    progress = startProgress + dx / maxSlide;
+    render(progress);
+  }
+
+  function onUp(e){
+    if (!dragging) return;
+    dragging = false;
+    frame.classList.remove('grabbing');
+    const target = clamp01(progress) >= 0.5 ? 1 : 0;
+    animateTo(target);
+  }
+
+  frame.addEventListener('pointerdown', onDown);
+  frame.addEventListener('pointermove', onMove);
+  frame.addEventListener('pointerup', onUp);
+  frame.addEventListener('pointercancel', onUp);
+
+  window.addEventListener('resize', computeMaxSlide);
+
+  computeMaxSlide();
+  hintOpenTimer = setTimeout(fadeHintOpen, 5000);
+})();
+</script>
+
+</body>
+</html>

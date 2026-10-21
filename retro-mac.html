@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classic Desktop — Interactive Macintosh</title>
+<style>
+  :root{
+    --case-hi:#efe6d2;
+    --case:#d9cbae;
+    --case-lo:#b6a688;
+    --case-shadow:#8a7c62;
+    --bezel:#232320;
+    --bezel-hi:#3a3a36;
+    --screen-glass:#dfe6d6;
+    --screen-ink:#1c1f18;
+    --key-hi:#f2ead8;
+    --key:#ddd0b6;
+    --key-lo:#b3a488;
+    --key-legend:#3c3226;
+    --accent:#6b7a5e;
+    --floor-a:#3d3f66;
+    --floor-b:#2a2c4a;
+    font-family: 'SF Mono','Menlo','Monaco','Consolas',monospace;
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 50% 20%, rgba(255,255,255,0.06), transparent 60%),
+      repeating-linear-gradient(115deg, var(--floor-a) 0 3px, var(--floor-b) 3px 46px),
+      linear-gradient(180deg,#1c1d33,#111226);
+    color:#e8e6da;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:40px 16px 60px;
+    overflow-x:hidden;
+  }
+
+  h1{
+    font-size:14px;
+    letter-spacing:.04em;
+    font-weight:400;
+    color:#b9b6ac;
+    margin:0 0 28px;
+    text-align:center;
+  }
+  h1 b{color:#f1efe6;font-weight:600;}
+
+  .stage{
+    perspective:1500px;
+    display:flex;
+    justify-content:center;
+  }
+
+  .scene{
+    transform: rotateX(8deg) rotateY(-7deg);
+    transform-style: preserve-3d;
+    transition: transform .5s ease;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .scene.flat{ transform: rotateX(0deg) rotateY(0deg); }
+
+  /* ---------- MONITOR ---------- */
+  .monitor{
+    width:440px;
+    padding:22px 22px 30px;
+    border-radius: 28px 28px 54px 54px / 26px 26px 40px 40px;
+    background: linear-gradient(155deg, var(--case-hi), var(--case) 45%, var(--case-lo) 100%);
+    box-shadow:
+      inset 0 2px 3px rgba(255,255,255,.6),
+      inset 0 -18px 22px rgba(0,0,0,.12),
+      0 30px 40px rgba(0,0,0,.45);
+    position:relative;
+  }
+  .monitor::before{ /* vent lines */
+    content:"";
+    position:absolute;
+    top:10px; left:50%;
+    width:70px; height:6px;
+    transform:translateX(-50%);
+    background: repeating-linear-gradient(90deg, var(--case-shadow) 0 2px, transparent 2px 6px);
+    opacity:.6;
+    border-radius:2px;
+  }
+
+  .bezel{
+    background: linear-gradient(160deg, var(--bezel-hi), var(--bezel) 60%);
+    border-radius: 16px 16px 20px 20px;
+    padding:20px 20px 26px;
+    box-shadow:
+      inset 0 2px 4px rgba(255,255,255,.08),
+      inset 0 -6px 10px rgba(0,0,0,.5),
+      0 2px 2px rgba(255,255,255,.15);
+  }
+
+  .screen{
+    position:relative;
+    width:100%;
+    height:300px;
+    border-radius: 10px;
+    background:
+      radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.35), transparent 65%),
+      var(--screen-glass);
+    box-shadow:
+      inset 0 0 0 3px rgba(0,0,0,.25),
+      inset 0 0 40px rgba(0,0,0,.35),
+      inset 0 30px 60px rgba(0,0,0,.15);
+    overflow:hidden;
+    color: var(--screen-ink);
+    display:flex;
+    flex-direction:column;
+  }
+  .screen::after{ /* scanlines */
+    content:"";
+    position:absolute; inset:0;
+    background: repeating-linear-gradient(180deg, rgba(0,0,0,.05) 0 1px, transparent 1px 3px);
+    pointer-events:none;
+  }
+  .screen::before{ /* vignette */
+    content:"";
+    position:absolute; inset:0;
+    box-shadow: inset 0 0 60px rgba(0,0,0,.35);
+    border-radius:10px;
+    pointer-events:none;
+  }
+
+  .menubar{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:3px 10px;
+    font-size:11px;
+    border-bottom:1px solid rgba(0,0,0,.55);
+    background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.15));
+    flex-shrink:0;
+  }
+  .menubar .clock{ margin-left:auto; opacity:.8; }
+
+  .window{
+    margin:10px;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    border:1px solid rgba(0,0,0,.7);
+    box-shadow: 2px 2px 0 rgba(0,0,0,.25);
+    background: rgba(255,255,255,.55);
+    min-height:0;
+  }
+  .titlebar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:3px 6px;
+    border-bottom:1px solid rgba(0,0,0,.6);
+    background: repeating-linear-gradient(180deg, rgba(0,0,0,.12) 0 1px, transparent 1px 3px);
+    font-size:10.5px;
+  }
+  .titlebar .dot{
+    width:9px;height:9px;
+    border:1px solid var(--screen-ink);
+    background:transparent;
+    flex-shrink:0;
+  }
+  .titlebar .title{ margin:0 auto; }
+
+  .content{
+    flex:1;
+    padding:8px 10px;
+    font-size:12.5px;
+    line-height:1.55;
+    overflow-y:auto;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+  .cursor{
+    display:inline-block;
+    animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .badge{
+    position:absolute;
+    bottom:6px; left:50%;
+    transform:translateX(-50%);
+    font-size:9px;
+    letter-spacing:.08em;
+    color:var(--case-shadow);
+  }
+
+  /* ---------- KEYBOARD ---------- */
+  .keyboard{
+    margin-top:26px;
+    padding:16px 18px 20px;
+    border-radius:16px;
+    background: linear-gradient(160deg, var(--case-hi), var(--case) 50%, var(--case-lo));
+    box-shadow:
+      inset 0 2px 2px rgba(255,255,255,.6),
+      inset 0 -10px 16px rgba(0,0,0,.1),
+      0 20px 30px rgba(0,0,0,.4);
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .krow{ display:flex; gap:6px; }
+
+  .key{
+    -webkit-tap-highlight-color: transparent;
+    user-select:none;
+    cursor:pointer;
+    border:none;
+    border-radius:5px;
+    background: linear-gradient(180deg, var(--key-hi), var(--key) 55%, var(--key-lo));
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.8),
+      0 3px 0 var(--case-shadow),
+      0 4px 3px rgba(0,0,0,.35);
+    color: var(--key-legend);
+    font-family: inherit;
+    font-size:12px;
+    height:38px;
+    min-width:34px;
+    flex:1 1 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1.1;
+    transition: transform .04s, box-shadow .04s;
+    position:relative;
+  }
+  .key .shift-char{
+    position:absolute; top:2px; right:5px;
+    font-size:8px; opacity:.7;
+  }
+  .key.wide{ flex-grow:2.4; }
+  .key.space{ flex-grow:10; }
+  .key.small-label{ font-size:9.5px; letter-spacing:.02em; }
+
+  .key.pressed, .key:active{
+    transform: translateY(3px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.5),
+      0 0 0 var(--case-shadow),
+      0 1px 2px rgba(0,0,0,.35);
+    background: linear-gradient(180deg, var(--key-lo), var(--key) 60%, var(--key-hi));
+  }
+
+  /* ---------- CONTROLS ---------- */
+  .controls{
+    margin-top:26px;
+    display:flex;
+    gap:22px;
+    align-items:center;
+    font-size:12px;
+    color:#cfcdc2;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .controls label{ display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .controls button{
+    font-family:inherit;
+    font-size:12px;
+    padding:6px 12px;
+    border-radius:6px;
+    border:1px solid #6b7a5e;
+    background:#3a4432;
+    color:#e8e6da;
+    cursor:pointer;
+  }
+  .controls button:hover{ background:#4a5640; }
+
+  @media (max-width: 500px){
+    .monitor{ width: 94vw; }
+    .keyboard{ width:94vw; }
+    .key{ font-size:10px; min-width:0; }
+  }
+</style>
+</head>
+<body>
+
+  <h1>a little <b>beige machine</b> — click the keys, or just type</h1>
+
+  <div class="stage">
+    <div class="scene" id="scene">
+
+      <div class="monitor">
+        <div class="bezel">
+          <div class="screen">
+            <div class="menubar">
+              <span>🍏</span><span>File</span><span>Edit</span><span>View</span><span>Special</span>
+              <span class="clock" id="clock"></span>
+            </div>
+            <div class="window">
+              <div class="titlebar"><span class="dot"></span><span class="title">Untitled</span></div>
+              <div class="content" id="content"><span id="text"></span><span class="cursor">▮</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="badge">PERSONAL COMPUTER · 1985</div>
+      </div>
+
+      <div class="keyboard" id="keyboard">
+        <div class="krow">
+          <button class="key small-label" data-code="Escape" data-key="esc" data-out="">esc</button>
+          <button class="key" data-code="Digit1" data-key="1" data-shift="!">1<span class="shift-char">!</span></button>
+          <button class="key" data-code="Digit2" data-key="2" data-shift="@">2<span class="shift-char">@</span></button>
+          <button class="key" data-code="Digit3" data-key="3" data-shift="#">3<span class="shift-char">#</span></button>
+          <button class="key" data-code="Digit4" data-key="4" data-shift="$">4<span class="shift-char">$</span></button>
+          <button class="key" data-code="Digit5" data-key="5" data-shift="%">5<span class="shift-char">%</span></button>
+          <button class="key" data-code="Digit6" data-key="6" data-shift="^">6<span class="shift-char">^</span></button>
+          <button class="key" data-code="Digit7" data-key="7" data-shift="&amp;">7<span class="shift-char">&amp;</span></button>
+          <button class="key" data-code="Digit8" data-key="8" data-shift="*">8<span class="shift-char">*</span></button>
+          <button class="key" data-code="Digit9" data-key="9" data-shift="(">9<span class="shift-char">(</span></button>
+          <button class="key" data-code="Digit0" data-key="0" data-shift=")">0<span class="shift-char">)</span></button>
+          <button class="key" data-code="Minus" data-key="-" data-shift="_">-<span class="shift-char">_</span></button>
+          <button class="key" data-code="Equal" data-key="=" data-shift="+">=<span class="shift-char">+</span></button>
+          <button class="key wide small-label" data-code="Backspace" data-key="backspace" data-out="">delete</button>
+        </div>
+
+        <div class="krow">
+          <button class="key wide small-label" data-code="Tab" data-key="tab" data-out="\t">tab</button>
+          <button class="key" data-code="KeyQ" data-key="q">q</button>
+          <button class="key" data-code="KeyW" data-key="w">w</button>
+          <button class="key" data-code="KeyE" data-key="e">e</button>
+          <button class="key" data-code="KeyR" data-key="r">r</button>
+          <button class="key" data-code="KeyT" data-key="t">t</button>
+          <button class="key" data-code="KeyY" data-key="y">y</button>
+          <button class="key" data-code="KeyU" data-key="u">u</button>
+          <button class="key" data-code="KeyI" data-key="i">i</button>
+          <button class="key" data-code="KeyO" data-key="o">o</button>
+          <button class="key" data-code="KeyP" data-key="p">p</button>
+          <button class="key" data-code="BracketLeft" data-key="[" data-shift="{">[<span class="shift-char">{</span></button>
+          <button class="key" data-code="BracketRight" data-key="]" data-shift="}">]<span class="shift-char">}</span></button>
+        </div>
+
+        <div class="krow">
+          <button class="key wide small-label" data-code="CapsLock" data-key="capslock" data-out="">caps lock</button>
+          <button class="key" data-code="KeyA" data-key="a">a</button>
+          <button class="key" data-code="KeyS" data-key="s">s</button>
+          <button class="key" data-code="KeyD" data-key="d">d</button>
+          <button class="key" data-code="KeyF" data-key="f">f</button>
+          <button class="key" data-code="KeyG" data-key="g">g</button>
+          <button class="key" data-code="KeyH" data-key="h">h</button>
+          <button class="key" data-code="KeyJ" data-key="j">j</button>
+          <button class="key" data-code="KeyK" data-key="k">k</button>
+          <button class="key" data-code="KeyL" data-key="l">l</button>
+          <button class="key" data-code="Semicolon" data-key=";" data-shift=":">;<span class="shift-char">:</span></button>
+          <button class="key" data-code="Quote" data-key="'" data-shift="&quot;">'<span class="shift-char">"</span></button>
+          <button class="key wide small-label" data-code="Enter" data-key="return" data-out="\n">return</button>
+        </div>
+
+        <div class="krow">
+          <button class="key wide small-label" data-code="ShiftLeft" data-key="shift" data-out="">shift</button>
+          <button class="key" data-code="KeyZ" data-key="z">z</button>
+          <button class="key" data-code="KeyX" data-key="x">x</button>
+          <button class="key" data-code="KeyC" data-key="c">c</button>
+          <button class="key" data-code="KeyV" data-key="v">v</button>
+          <button class="key" data-code="KeyB" data-key="b">b</button>
+          <button class="key" data-code="KeyN" data-key="n">n</button>
+          <button class="key" data-code="KeyM" data-key="m">m</button>
+          <button class="key" data-code="Comma" data-key="," data-shift="&lt;">,<span class="shift-char">&lt;</span></button>
+          <button class="key" data-code="Period" data-key="." data-shift="&gt;">.<span class="shift-char">&gt;</span></button>
+          <button class="key" data-code="Slash" data-key="/" data-shift="?">/<span class="shift-char">?</span></button>
+          <button class="key wide small-label" data-code="ShiftRight" data-key="shift" data-out="">shift</button>
+        </div>
+
+        <div class="krow">
+          <button class="key small-label" data-code="AltLeft" data-key="option" data-out="">option</button>
+          <button class="key small-label" data-code="MetaLeft" data-key="command" data-out="">⌘</button>
+          <button class="key space" data-code="Space" data-key=" " data-out=" ">space</button>
+          <button class="key small-label" data-code="MetaRight" data-key="command" data-out="">⌘</button>
+          <button class="key small-label" data-code="AltRight" data-key="option" data-out="">option</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="controls">
+    <label><input type="checkbox" id="tiltToggle" checked> 3D view</label>
+    <label><input type="checkbox" id="soundToggle" checked> key clicks</label>
+    <button id="clearBtn">clear screen</button>
+  </div>
+
+<script>
+(function(){
+  var textEl = document.getElementById('text');
+  var buffer = "Welcome back.\n\nType on your own keyboard, or click the keys below.\n\n";
+  textEl.textContent = buffer;
+
+  var shiftDown = false;
+  var capsOn = false;
+
+  // ---- clock ----
+  var clockEl = document.getElementById('clock');
+  function tickClock(){
+    var d = new Date();
+    var h = d.getHours() % 12; if(h===0) h=12;
+    var m = String(d.getMinutes()).padStart(2,'0');
+    var ap = d.getHours() < 12 ? 'AM' : 'PM';
+    clockEl.textContent = h + ':' + m + ' ' + ap;
+  }
+  tickClock();
+  setInterval(tickClock, 15000);
+
+  // ---- sound ----
+  var audioCtx = null;
+  function playClick(){
+    if(!document.getElementById('soundToggle').checked) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      o.type = 'square';
+      o.frequency.value = 1200;
+      g.gain.value = 0.03;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04);
+      o.stop(audioCtx.currentTime + 0.05);
+    }catch(e){}
+  }
+
+  function render(){
+    textEl.textContent = buffer;
+  }
+
+  function insertChar(ch){
+    buffer += ch;
+    render();
+  }
+  function backspace(){
+    buffer = buffer.slice(0, -1);
+    render();
+  }
+  function enter(){
+    buffer += "\n";
+    render();
+  }
+
+  function charForKey(el){
+    var base = el.getAttribute('data-key');
+    var shiftChar = el.getAttribute('data-shift');
+    var out = el.getAttribute('data-out');
+    if(out !== null) return out === '\\t' ? '\t' : (out === '\\n' ? '\n' : out);
+    if(base.length === 1){
+      var isLetter = /[a-z]/i.test(base);
+      if(isLetter){
+        var upper = shiftDown !== capsOn;
+        return upper ? base.toUpperCase() : base;
+      }
+      if(shiftDown && shiftChar) return shiftChar;
+      return base;
+    }
+    return '';
+  }
+
+  function keyAction(el){
+    var code = el.getAttribute('data-code');
+    if(code === 'Backspace'){ backspace(); return; }
+    if(code === 'Enter'){ enter(); return; }
+    if(code === 'CapsLock'){ capsOn = !capsOn; el.classList.toggle('pressed', capsOn); return; }
+    if(code === 'ShiftLeft' || code === 'ShiftRight'){ return; } // handled via down/up
+    var ch = charForKey(el);
+    if(ch) insertChar(ch);
+  }
+
+  // ---- mouse / touch clicks on the on-screen keyboard ----
+  document.querySelectorAll('.key').forEach(function(el){
+    el.addEventListener('click', function(){
+      playClick();
+      keyAction(el);
+      if(el.getAttribute('data-code') !== 'CapsLock'){
+        el.classList.add('pressed');
+        setTimeout(function(){ el.classList.remove('pressed'); }, 90);
+      }
+    });
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    buffer = "";
+    render();
+  });
+
+  // ---- real physical keyboard ----
+  function findKeyEl(code){
+    return document.querySelector('.key[data-code="' + code + '"]');
+  }
+
+  window.addEventListener('keydown', function(e){
+    if(e.metaKey || e.ctrlKey || e.altKey) return; // let browser shortcuts through
+    var code = e.code;
+    var el = findKeyEl(code);
+
+    if(code === 'ShiftLeft' || code === 'ShiftRight'){
+      shiftDown = true;
+      if(el) el.classList.add('pressed');
+      return;
+    }
+    if(code === 'CapsLock'){
+      capsOn = !capsOn;
+      if(el) el.classList.toggle('pressed', capsOn);
+      return;
+    }
+
+    var handled = ['Backspace','Enter','Tab','Space','Escape'].includes(code) ||
+                   /^Key[A-Z]$/.test(code) || /^Digit[0-9]$/.test(code) ||
+                   ['Minus','Equal','BracketLeft','BracketRight','Semicolon','Quote','Comma','Period','Slash'].includes(code);
+    if(!handled) return;
+
+    e.preventDefault();
+    playClick();
+    if(el){
+      el.classList.add('pressed');
+      setTimeout(function(){ el.classList.remove('pressed'); }, 90);
+    }
+
+    if(code === 'Backspace'){ backspace(); return; }
+    if(code === 'Enter'){ enter(); return; }
+    if(code === 'Tab'){ insertChar('\t'); return; }
+    if(code === 'Escape'){ return; }
+    if(el){
+      var ch = charForKey(el);
+      if(ch) insertChar(ch);
+    }
+  });
+
+  window.addEventListener('keyup', function(e){
+    if(e.code === 'ShiftLeft' || e.code === 'ShiftRight'){
+      shiftDown = false;
+      var el = findKeyEl(e.code);
+      if(el) el.classList.remove('pressed');
+    }
+  });
+
+  // ---- 3D tilt toggle ----
+  var scene = document.getElementById('scene');
+  document.getElementById('tiltToggle').addEventListener('change', function(e){
+    scene.classList.toggle('flat', !e.target.checked);
+  });
+
+})();
+</script>
+</body>
+</html>

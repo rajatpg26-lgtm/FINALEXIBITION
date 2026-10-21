@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE SEARCH</title>
+<style>
+  :root{
+    --ink:#e9e6df;
+    --ink-dim:rgba(233,230,223,0.55);
+    --ink-faint:rgba(233,230,223,0.28);
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:#000; overflow:hidden;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  canvas{ display:block; width:100%; height:100%; }
+
+  /* ---------- shared overlay helpers ---------- */
+  .overlay{
+    position:fixed; inset:0; z-index:20;
+    display:flex; align-items:center; justify-content:center;
+    background:#000;
+    transition:opacity 1.1s ease;
+  }
+  .overlay.hidden{ opacity:0; pointer-events:none; }
+  .overlay.gone{ display:none; }
+
+  .panel{
+    text-align:center;
+    max-width:520px;
+    padding:0 32px;
+  }
+  .title{
+    font-size:15px;
+    letter-spacing:0.55em;
+    font-weight:400;
+    margin:0 0 22px 0;
+    color:var(--ink);
+  }
+  .subtitle{
+    font-size:14px;
+    letter-spacing:0.03em;
+    color:var(--ink-dim);
+    margin:0 0 46px 0;
+    font-weight:300;
+  }
+  .btn{
+    background:transparent;
+    border:1px solid var(--ink-faint);
+    color:var(--ink);
+    font-size:12px;
+    letter-spacing:0.32em;
+    padding:16px 30px;
+    cursor:pointer;
+    font-family:inherit;
+    transition:border-color 0.4s ease, background 0.4s ease, letter-spacing 0.4s ease;
+  }
+  .btn:hover{
+    border-color:rgba(233,230,223,0.75);
+    background:rgba(255,255,255,0.03);
+    letter-spacing:0.38em;
+  }
+
+  /* ---------- mobile block ---------- */
+  #mobile-block{ z-index:60; }
+  #mobile-block p{ font-size:13px; letter-spacing:0.04em; color:var(--ink-dim); line-height:1.7; }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:fixed; inset:0; z-index:10;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity 1.4s ease;
+  }
+  #hud.visible{ opacity:1; }
+
+  .hud-corner{
+    position:absolute;
+    font-size:10px;
+    letter-spacing:0.28em;
+    color:var(--ink-faint);
+    line-height:1.9;
+  }
+  #hud-objective{ top:26px; left:30px; }
+  #hud-objective .value{ color:var(--ink-dim); letter-spacing:0.05em; font-size:11px; display:block; margin-top:2px; }
+  #hud-time{ top:26px; right:30px; text-align:right; }
+  #hud-time .value{ color:var(--ink-dim); letter-spacing:0.08em; font-size:12px; display:block; margin-top:2px; font-variant-numeric:tabular-nums; }
+
+  #hud-prompt{
+    position:absolute; bottom:9%; left:50%; transform:translate(-50%,10px);
+    font-size:11px; letter-spacing:0.3em; color:var(--ink);
+    opacity:0; transition:opacity 0.5s ease, transform 0.5s ease;
+    white-space:nowrap;
+  }
+  #hud-prompt.show{ opacity:0.85; transform:translate(-50%,0); }
+
+  #resume-hint{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:11px; letter-spacing:0.3em; color:var(--ink-dim);
+    opacity:0; transition:opacity 0.5s ease;
+  }
+  #resume-hint.show{ opacity:1; }
+
+  /* ---------- first-run instructions ---------- */
+  #instructions{
+    position:fixed; z-index:11;
+    bottom:14%; left:50%; transform:translateX(-50%);
+    text-align:center;
+    opacity:0;
+    transition:opacity 1.2s ease;
+    pointer-events:none;
+  }
+  #instructions.show{ opacity:1; }
+  #instructions div{
+    font-size:10px; letter-spacing:0.32em; color:var(--ink-faint);
+    margin:6px 0;
+  }
+
+  /* ---------- vignette ---------- */
+  #vignette{
+    position:fixed; inset:0; z-index:5; pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(0,0,0,0.92) 100%);
+    opacity:0;
+    transition:opacity 1.6s ease;
+  }
+  #vignette.show{ opacity:1; }
+
+  /* ---------- success screen ---------- */
+  #success .stats{
+    font-size:12px; letter-spacing:0.14em; color:var(--ink-dim);
+    line-height:2.1; margin:8px 0 44px 0; font-weight:300;
+  }
+  #success .stats span{ color:var(--ink); }
+</style>
+</head>
+<body>
+
+  <!-- Mobile / touch block -->
+  <div id="mobile-block" class="overlay gone">
+    <div class="panel">
+      <p class="title" style="font-size:13px;">THE SEARCH</p>
+      <p>This experience is designed for desktop.</p>
+    </div>
+  </div>
+
+  <!-- Intro -->
+  <div id="intro" class="overlay">
+    <div class="panel">
+      <p class="title">THE SEARCH</p>
+      <p class="subtitle">Something is hidden here.</p>
+      <button class="btn" id="enter-btn">ENTER THE DARK</button>
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div id="success" class="overlay gone" style="opacity:0;">
+    <div class="panel">
+      <p class="title" style="font-size:14px;">YOU FOUND IT.</p>
+      <p class="stats">
+        TIME <span id="stat-time">00:00</span><br>
+        DISTANCE TRAVELLED <span id="stat-distance">0 m</span>
+      </p>
+      <button class="btn" id="restart-btn">EXPLORE AGAIN</button>
+    </div>
+  </div>
+
+  <!-- Vignette -->
+  <div id="vignette"></div>
+
+  <!-- First run instructions -->
+  <div id="instructions">
+    <div>WASD &nbsp;—&nbsp; MOVE</div>
+    <div>MOUSE &nbsp;—&nbsp; LOOK</div>
+    <div>E &nbsp;—&nbsp; INTERACT</div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-corner" id="hud-objective">OBJECTIVE<span class="value">Find the hidden object.</span></div>
+    <div class="hud-corner" id="hud-time">TIME<span class="value" id="time-value">00:00</span></div>
+    <div id="hud-prompt">PRESS E TO INVESTIGATE</div>
+    <div id="resume-hint">CLICK TO CONTINUE</div>
+  </div>
+
+  <canvas id="c"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     MOBILE DETECTION — bail out early for touch / narrow devices
+  ============================================================ */
+  var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 1);
+  var isNarrow = window.innerWidth < 860;
+  var isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if ((isTouch && isNarrow) || isMobileUA) {
+    document.getElementById('mobile-block').classList.remove('gone');
+    document.getElementById('intro').classList.add('gone');
+    return;
+  }
+
+  /* ============================================================
+     GLOBAL STATE
+  ============================================================ */
+  var scene, camera, renderer, clock;
+  var flashlight, flashlightTarget;
+  var ambientLight;
+  var canvas = document.getElementById('c');
+
+  var boxColliders = [];   // {minX,maxX,minZ,maxZ}
+  var circleColliders = []; // {x,z,r}
+
+  var keys = {};
+  var pointerLocked = false;
+  var gameStarted = false;
+  var found = false;
+  var investigating = false;
+
+  var PLAYER_RADIUS = 0.35;
+  var EYE_HEIGHT = 1.7;
+  var MOVE_SPEED = 3.7;
+  var YAW = 0, PITCH = 0;
+  var PITCH_LIMIT = Math.PI/2 - 0.05;
+
+  var startPos = new THREE.Vector3(0, EYE_HEIGHT, 11);
+
+  var distanceTravelled = 0;
+  var startTime = 0;
+  var frozenElapsed = 0;
+
+  var bobTimer = 0;
+  var bobAmount = 0.045;
+  var bobFreq = 9.5;
+
+  var targetMesh, targetLight;
+  var targetPos = new THREE.Vector3();
+  var INTERACT_DIST = 2.4;
+  var GLOW_NEAR_DIST = 7.5;
+
+  var dustGeometry, dustPoints, dustCount = 420;
+  var dustBase, dustPositions, dustColors;
+
+  var audioCtx = null;
+  var ambientGain = null;
+
+  /* Candidate spawn points for the hidden object, scattered through the room */
+  var spawnCandidates = [
+    {x:-2,  z:-13},
+    {x:11,  z:-3},
+    {x:-11, z:-8},
+    {x:5,   z:6},
+    {x:-17, z:8},
+    {x:17,  z:-12},
+    {x:-5,  z:12},
+    {x:14,  z:2},
+    {x:-9,  z:-5},
+    {x:3,   z:11.5},
+    {x:-16, z:-2},
+    {x:0,   z:-1}
+  ];
+
+  /* ============================================================
+     INIT
+  ============================================================ */
+  function init(){
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.052);
+
+    camera = new THREE.PerspectiveCamera(68, window.innerWidth/window.innerHeight, 0.1, 60);
+    camera.position.copy(startPos);
+    camera.rotation.order = 'YXZ';
+
+    renderer = new THREE.WebGLRenderer({ canvas:canvas, antialias:true, powerPreference:'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    if (renderer.outputEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
+    if (renderer.toneMapping !== undefined) {
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+    }
+
+    clock = new THREE.Clock();
+
+    buildLighting();
+    buildRoom();
+    buildDust();
+    buildTarget();
+
+    window.addEventListener('resize', onResize);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('pointerlockchange', onPointerLockChange);
+    canvas.addEventListener('click', function(){
+      if (gameStarted && !found && !investigating) canvas.requestPointerLock();
+    });
+
+    animate();
+  }
+
+  /* ============================================================
+     LIGHTING & FLASHLIGHT
+  ============================================================ */
+  function buildLighting(){
+    ambientLight = new THREE.AmbientLight(0x0c0d12, 0.16);
+    scene.add(ambientLight);
+
+    flashlight = new THREE.SpotLight(0xffd9a8, 1.7, 19, THREE.MathUtils.degToRad(27), 0.45, 1.8);
+    flashlight.castShadow = true;
+    flashlight.shadow.mapSize.width = 1024;
+    flashlight.shadow.mapSize.height = 1024;
+    flashlight.shadow.camera.near = 0.5;
+    flashlight.shadow.camera.far = 20;
+    flashlight.shadow.bias = -0.0025;
+    flashlight.position.set(0, 0, 0.15);
+
+    flashlightTarget = new THREE.Object3D();
+    flashlightTarget.position.set(0, 0, -1);
+
+    camera.add(flashlight);
+    camera.add(flashlightTarget);
+    flashlight.target = flashlightTarget;
+    scene.add(camera);
+  }
+
+  /* ============================================================
+     ROOM GEOMETRY + COLLIDERS
+  ============================================================ */
+  var WALL_H = 6;
+
+  function addWallBox(minX,maxX,minZ,maxZ, mat){
+    var w = maxX-minX, d = maxZ-minZ;
+    var geo = new THREE.BoxGeometry(w, WALL_H, d);
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set((minX+maxX)/2, WALL_H/2, (minZ+maxZ)/2);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    scene.add(mesh);
+    boxColliders.push({minX:minX,maxX:maxX,minZ:minZ,maxZ:maxZ});
+  }
+
+  function addCrate(x,z,w,d,h, mat){
+    var geo = new THREE.BoxGeometry(w,h,d);
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, h/2, z);
+    mesh.rotation.y = (Math.random()-0.5)*0.3;
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    scene.add(mesh);
+    var hw = w/2*1.05, hd = d/2*1.05;
+    boxColliders.push({minX:x-hw,maxX:x+hw,minZ:z-hd,maxZ:z+hd});
+  }
+
+  function addPillar(x,z,r){
+    var geo = new THREE.CylinderGeometry(r, r*1.05, WALL_H, 14);
+    var mat = new THREE.MeshStandardMaterial({ color:0x232323, roughness:0.85, metalness:0.05 });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, WALL_H/2, z);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    scene.add(mesh);
+    circleColliders.push({x:x,z:z,r:r+0.05});
+  }
+
+  function buildRoom(){
+    var concrete = new THREE.MeshStandardMaterial({ color:0x2a2a2a, roughness:0.94, metalness:0.03 });
+    var concreteDark = new THREE.MeshStandardMaterial({ color:0x232323, roughness:0.96, metalness:0.02 });
+    var wood = new THREE.MeshStandardMaterial({ color:0x3b2f22, roughness:0.85, metalness:0.0 });
+    var metal = new THREE.MeshStandardMaterial({ color:0x2e2e30, roughness:0.55, metalness:0.4 });
+
+    // floor
+    var floorGeo = new THREE.PlaneGeometry(60, 50);
+    var floor = new THREE.Mesh(floorGeo, concreteDark);
+    floor.rotation.x = -Math.PI/2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // ceiling (mostly to enclose the space, barely lit)
+    var ceilGeo = new THREE.PlaneGeometry(60, 50);
+    var ceil = new THREE.Mesh(ceilGeo, concreteDark);
+    ceil.rotation.x = Math.PI/2;
+    ceil.position.y = WALL_H;
+    scene.add(ceil);
+
+    // outer perimeter walls (room spans x:-20..20, z:-15..15)
+    addWallBox(-20.5, 20.5, -15.5, -14.5, concrete); // north
+    addWallBox(-20.5, 20.5,  14.5,  15.5, concrete); // south
+    addWallBox(-20.5,-19.5, -15,    15,   concrete); // west
+    addWallBox( 19.5, 20.5, -15,    15,   concrete); // east
+
+    // interior partition walls — deliberately partial, forcing the player
+    // to walk around their ends, creating corridors and alcoves
+    addWallBox(-8.3, -7.7, -14, -2,   concreteDark);
+    addWallBox( 1.7,  2.3,  -5,  9,   concreteDark);
+    addWallBox( 5,    15,  -6.3,-5.7, concreteDark);
+    addWallBox(-9,    5,    8.7, 9.3, concreteDark);
+    addWallBox(-14.3,-13.7, 0,   10,  concreteDark);
+    addWallBox( 14.7, 15.3, 6,   14,  concreteDark);
+    addWallBox(-17,  -9,   -9.3,-8.7, concreteDark);
+
+    // pillars
+    var pillars = [
+      [-16,-12],[16,-12],[-16,12],[16,12],
+      [-4,-9],[9,4.5],[-11,-3],[4,12.5],
+      [12,-11],[-9,7.5],[18,6],[-2,4]
+    ];
+    pillars.forEach(function(p){ addPillar(p[0], p[1], 0.38); });
+
+    // crates / furniture
+    var crates = [
+      [-3,-11, 1.0,1.0,1.0, wood],
+      [7,-1.5, 1.2,1.2,1.0, wood],
+      [-12,5,  1.0,1.6,0.8, wood],
+      [13,9,   1.0,1.0,1.2, metal],
+      [-6,3,   0.8,0.8,0.8, wood],
+      [2,-12,  1.0,1.0,1.0, wood],
+      [-18,0,  1.0,1.0,1.0, metal],
+      [9,-9,   1.3,0.9,0.9, wood],
+      [-4,10.7,1.4,0.7,0.9, metal],
+      [17,-4,  0.9,0.9,1.4, wood],
+      [-1,-7,  0.9,0.9,0.9, wood],
+      [16,10,  1.1,1.1,0.9, wood]
+    ];
+    crates.forEach(function(c){ addCrate(c[0],c[1],c[2],c[3],c[4], c[5]); });
+  }
+
+  /* ============================================================
+     ATMOSPHERIC DUST
+  ============================================================ */
+  function buildDust(){
+    dustGeometry = new THREE.BufferGeometry();
+    dustPositions = new Float32Array(dustCount*3);
+    dustColors = new Float32Array(dustCount*3);
+    dustBase = new Float32Array(dustCount*4); // phaseX, phaseZ, speedY, seed
+
+    for (var i=0;i<dustCount;i++){
+      var x = (Math.random()-0.5)*38;
+      var z = (Math.random()-0.5)*28;
+      var y = Math.random()*4.2 + 0.15;
+      dustPositions[i*3] = x;
+      dustPositions[i*3+1] = y;
+      dustPositions[i*3+2] = z;
+      dustColors[i*3] = 0.06; dustColors[i*3+1] = 0.05; dustColors[i*3+2] = 0.04;
+      dustBase[i*4]   = Math.random()*Math.PI*2;
+      dustBase[i*4+1] = Math.random()*Math.PI*2;
+      dustBase[i*4+2] = 0.06 + Math.random()*0.09;
+      dustBase[i*4+3] = Math.random();
+    }
+    dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+    dustGeometry.setAttribute('color', new THREE.BufferAttribute(dustColors, 3));
+
+    var mat = new THREE.PointsMaterial({
+      size:0.032, vertexColors:true, transparent:true, opacity:0.9,
+      blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
+    });
+    dustPoints = new THREE.Points(dustGeometry, mat);
+    scene.add(dustPoints);
+  }
+
+  function updateDust(delta, elapsed){
+    var forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    var camPos = camera.position;
+    var posAttr = dustGeometry.attributes.position;
+    var colAttr = dustGeometry.attributes.color;
+
+    for (var i=0;i<dustCount;i++){
+      var ix = i*3;
+      var px = dustPositions[ix], py = dustPositions[ix+1], pz = dustPositions[ix+2];
+
+      // gentle upward drift + soft horizontal jitter
+      var seed = dustBase[i*4+3];
+      py += dustBase[i*4+2]*delta;
+      px += Math.sin(elapsed*0.4 + dustBase[i*4]) * 0.05 * delta;
+      pz += Math.cos(elapsed*0.35 + dustBase[i*4+1]) * 0.05 * delta;
+      if (py > 4.6) py = 0.1 + seed*0.2;
+
+      dustPositions[ix] = px; dustPositions[ix+1] = py; dustPositions[ix+2] = pz;
+
+      // illuminate only the dust caught inside the flashlight cone
+      var dx = px-camPos.x, dy = py-camPos.y, dz = pz-camPos.z;
+      var dist = Math.sqrt(dx*dx+dy*dy+dz*dz) + 0.0001;
+      var align = (dx*forward.x + dy*forward.y + dz*forward.z)/dist;
+      var bright = 0;
+      if (align > 0.92 && dist < 9){
+        bright = (align-0.92)/0.08;
+        bright *= Math.max(0, 1 - dist/9);
+      }
+      var base = 0.05;
+      var r = base + bright*0.55, g = base*0.9 + bright*0.42, b = base*0.75 + bright*0.28;
+      colAttr.array[ix] = r; colAttr.array[ix+1] = g; colAttr.array[ix+2] = b;
+    }
+    posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
+  }
+
+  /* ============================================================
+     HIDDEN OBJECT
+  ============================================================ */
+  function buildTarget(){
+    var geo = new THREE.SphereGeometry(0.15, 20, 20);
+    var mat = new THREE.MeshStandardMaterial({
+      color:0x2a0808, roughness:0.4, metalness:0.3,
+      emissive:0xff2418, emissiveIntensity:0.05
+    });
+    targetMesh = new THREE.Mesh(geo, mat);
+    targetMesh.castShadow = true;
+    scene.add(targetMesh);
+
+    targetLight = new THREE.PointLight(0xff4a30, 0.05, 3.2, 2.4);
+    targetMesh.add(targetLight);
+
+    placeTarget();
+  }
+
+  function placeTarget(){
+    var idx = Math.floor(Math.random()*spawnCandidates.length);
+    var p = spawnCandidates[idx];
+    targetPos.set(p.x, 0.55, p.z);
+    targetMesh.position.copy(targetPos);
+    targetMesh.material.emissiveIntensity = 0.05;
+    targetLight.intensity = 0.05;
+  }
+
+  function updateTargetGlow(){
+    var dx = camera.position.x - targetPos.x;
+    var dz = camera.position.z - targetPos.z;
+    var dist = Math.sqrt(dx*dx+dz*dz);
+
+    var proximity = Math.max(0, 1 - dist/GLOW_NEAR_DIST);
+
+    var toTarget = new THREE.Vector3().subVectors(targetPos, camera.position).normalize();
+    var forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    var facing = Math.max(0, forward.dot(toTarget));
+
+    var glow = 0.05 + proximity*proximity*0.55 + facing*facing*facing*0.7*proximity;
+    glow = Math.min(glow, investigating || found ? 1.0 : 0.85);
+
+    targetMesh.material.emissiveIntensity = glow;
+    targetLight.intensity = 0.05 + glow*1.1;
+
+    var canInteract = dist < INTERACT_DIST && !found && !investigating && gameStarted;
+    var promptEl = document.getElementById('hud-prompt');
+    if (canInteract) promptEl.classList.add('show'); else promptEl.classList.remove('show');
+    return canInteract;
+  }
+
+  /* ============================================================
+     COLLISION
+  ============================================================ */
+  function collidesAt(x, z){
+    for (var i=0;i<boxColliders.length;i++){
+      var b = boxColliders[i];
+      if (x + PLAYER_RADIUS > b.minX && x - PLAYER_RADIUS < b.maxX &&
+          z + PLAYER_RADIUS > b.minZ && z - PLAYER_RADIUS < b.maxZ) return true;
+    }
+    for (var j=0;j<circleColliders.length;j++){
+      var c = circleColliders[j];
+      var dx = x-c.x, dz = z-c.z;
+      var rr = (c.r+PLAYER_RADIUS);
+      if (dx*dx+dz*dz < rr*rr) return true;
+    }
+    return false;
+  }
+
+  /* ============================================================
+     INPUT
+  ============================================================ */
+  function onKeyDown(e){
+    keys[e.code] = true;
+    if (e.code === 'KeyE' && gameStarted && !found && !investigating){
+      var dx = camera.position.x - targetPos.x;
+      var dz = camera.position.z - targetPos.z;
+      var dist = Math.sqrt(dx*dx+dz*dz);
+      if (dist < INTERACT_DIST) startInvestigate();
+    }
+  }
+  function onKeyUp(e){ keys[e.code] = false; }
+
+  function onMouseMove(e){
+    if (!pointerLocked || investigating || found) return;
+    var movementX = e.movementX || 0;
+    var movementY = e.movementY || 0;
+    YAW   -= movementX * 0.0022;
+    PITCH -= movementY * 0.0022;
+    if (PITCH > PITCH_LIMIT) PITCH = PITCH_LIMIT;
+    if (PITCH < -PITCH_LIMIT) PITCH = -PITCH_LIMIT;
+    camera.rotation.y = YAW;
+    camera.rotation.x = PITCH;
+  }
+
+  function onPointerLockChange(){
+    pointerLocked = document.pointerLockElement === canvas;
+    var hint = document.getElementById('resume-hint');
+    if (gameStarted && !pointerLocked && !found){
+      hint.classList.add('show');
+    } else {
+      hint.classList.remove('show');
+    }
+  }
+
+  function onResize(){
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  /* ============================================================
+     MOVEMENT
+  ============================================================ */
+  function updateMovement(delta){
+    var inputX = (keys['KeyD']?1:0) - (keys['KeyA']?1:0);
+    var inputZ = (keys['KeyW']?1:0) - (keys['KeyS']?1:0);
+    if (inputX === 0 && inputZ === 0){
+      bobTimer *= 0.9;
+      return;
+    }
+
+    var forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    forward.y = 0; forward.normalize();
+    var up = new THREE.Vector3(0,1,0);
+    var right = new THREE.Vector3().crossVectors(forward, up).normalize();
+
+    var moveX = right.x*inputX + forward.x*inputZ;
+    var moveZ = right.z*inputX + forward.z*inputZ;
+    var len = Math.sqrt(moveX*moveX + moveZ*moveZ);
+    if (len > 0.0001){ moveX/=len; moveZ/=len; }
+
+    var dx = moveX * MOVE_SPEED * delta;
+    var dz = moveZ * MOVE_SPEED * delta;
+
+    var moved = 0;
+    var nx = camera.position.x + dx;
+    if (!collidesAt(nx, camera.position.z)){
+      camera.position.x = nx;
+      moved += Math.abs(dx);
+    }
+    var nz = camera.position.z + dz;
+    if (!collidesAt(camera.position.x, nz)){
+      camera.position.z = nz;
+      moved += Math.abs(dz);
+    }
+
+    distanceTravelled += moved;
+    bobTimer += delta * bobFreq * (MOVE_SPEED*0.6);
+    camera.position.y = EYE_HEIGHT + Math.sin(bobTimer) * bobAmount;
+  }
+
+  /* ============================================================
+     FLASHLIGHT FLICKER
+  ============================================================ */
+  var flickerDip = 0;
+  function updateFlicker(delta, elapsed){
+    var base = 1.7;
+    var wobble = Math.sin(elapsed*7.3)*0.04 + Math.sin(elapsed*2.1)*0.03;
+    if (Math.random() < 0.006) flickerDip = 0.55 + Math.random()*0.4;
+    flickerDip *= Math.pow(0.001, delta); // fast decay back to 0
+    flashlight.intensity = Math.max(0.5, base + wobble - flickerDip);
+  }
+
+  /* ============================================================
+     AUDIO
+  ============================================================ */
+  function initAudio(){
+    if (audioCtx) return;
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+
+      var osc1 = audioCtx.createOscillator();
+      osc1.type = 'sine'; osc1.frequency.value = 52;
+      var osc2 = audioCtx.createOscillator();
+      osc2.type = 'sine'; osc2.frequency.value = 63;
+
+      var filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass'; filter.frequency.value = 260;
+
+      ambientGain = audioCtx.createGain();
+      ambientGain.gain.value = 0.022;
+
+      var lfo = audioCtx.createOscillator();
+      lfo.frequency.value = 0.07;
+      var lfoGain = audioCtx.createGain();
+      lfoGain.gain.value = 40;
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(ambientGain);
+      ambientGain.connect(audioCtx.destination);
+
+      osc1.start(); osc2.start(); lfo.start();
+    } catch(err){ /* audio not available — fail silently */ }
+  }
+
+  function playSuccessSound(){
+    if (!audioCtx) return;
+    var now = audioCtx.currentTime;
+
+    var osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now+0.6);
+
+    var gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.09, now+0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+1.4);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now+1.5);
+
+    var osc2 = audioCtx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, now+0.05);
+    osc2.frequency.exponentialRampToValueAtTime(1320, now+0.7);
+    var gain2 = audioCtx.createGain();
+    gain2.gain.setValueAtTime(0.0001, now+0.05);
+    gain2.gain.linearRampToValueAtTime(0.045, now+0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, now+1.6);
+    osc2.connect(gain2); gain2.connect(audioCtx.destination);
+    osc2.start(now+0.05); osc2.stop(now+1.7);
+  }
+
+  /* ============================================================
+     INVESTIGATE / WIN SEQUENCE
+  ============================================================ */
+  function startInvestigate(){
+    investigating = true;
+    document.getElementById('hud-prompt').classList.remove('show');
+
+    var t0 = performance.now();
+    var duration = 1300;
+    var startGlowIntensity = flashlight.intensity;
+
+    function tick(){
+      var t = Math.min(1, (performance.now()-t0)/duration);
+      var eased = 1 - Math.pow(1-t, 3);
+      targetMesh.material.emissiveIntensity = 0.05 + eased*0.95;
+      targetLight.intensity = 0.05 + eased*2.4;
+      flashlight.intensity = startGlowIntensity * (1-eased*0.3);
+
+      if (t < 1){
+        requestAnimationFrame(tick);
+      } else {
+        finishFound();
+      }
+    }
+    requestAnimationFrame(tick);
+    playSuccessSound();
+  }
+
+  function finishFound(){
+    found = true;
+    frozenElapsed = (performance.now()-startTime)/1000;
+    document.exitPointerLock();
+
+    document.getElementById('stat-time').textContent = formatTime(frozenElapsed);
+    document.getElementById('stat-distance').textContent = Math.round(distanceTravelled) + ' m';
+
+    var successEl = document.getElementById('success');
+    successEl.classList.remove('gone');
+    // force reflow so the opacity transition runs
+    void successEl.offsetWidth;
+    successEl.style.opacity = '1';
+
+    document.getElementById('hud').classList.remove('visible');
+  }
+
+  function formatTime(sec){
+    var m = Math.floor(sec/60);
+    var s = Math.floor(sec%60);
+    return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+  }
+
+  /* ============================================================
+     GAME FLOW
+  ============================================================ */
+  function startGame(){
+    gameStarted = true;
+    found = false;
+    investigating = false;
+    distanceTravelled = 0;
+    startTime = performance.now();
+
+    camera.position.copy(startPos);
+    YAW = 0; PITCH = 0; // face into the room from the entrance (toward -Z)
+    camera.rotation.y = YAW;
+    camera.rotation.x = PITCH;
+
+    document.getElementById('hud').classList.add('visible');
+    document.getElementById('vignette').classList.add('show');
+
+    canvas.requestPointerLock();
+
+    var instr = document.getElementById('instructions');
+    instr.classList.add('show');
+    setTimeout(function(){ instr.classList.remove('show'); }, 4600);
+  }
+
+  function resetGame(){
+    var successEl = document.getElementById('success');
+    successEl.style.opacity = '0';
+    setTimeout(function(){ successEl.classList.add('gone'); }, 1100);
+
+    placeTarget();
+    startGame();
+  }
+
+  document.getElementById('enter-btn').addEventListener('click', function(){
+    initAudio();
+    var intro = document.getElementById('intro');
+    intro.classList.add('hidden');
+    setTimeout(function(){ intro.classList.add('gone'); }, 1200);
+    startGame();
+  });
+
+  document.getElementById('restart-btn').addEventListener('click', resetGame);
+
+  /* ============================================================
+     MAIN LOOP
+  ============================================================ */
+  function animate(){
+    requestAnimationFrame(animate);
+    var delta = Math.min(clock.getDelta(), 0.05);
+    var elapsed = clock.getElapsedTime();
+
+    if (gameStarted && !found && !investigating){
+      updateMovement(delta);
+      updateTargetGlow();
+      document.getElementById('time-value').textContent =
+        formatTime((performance.now()-startTime)/1000);
+    }
+
+    updateFlicker(delta, elapsed);
+    updateDust(delta, elapsed);
+
+    renderer.render(scene, camera);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
